@@ -58,6 +58,7 @@ public interface Graph<N> extends Iterable<N> {
     Set<N> getPredsOf(N node);
 
     /**
+     * 得到指定节点的后继节点
      * @return the successors of given node in this graph.
      */
     Set<N> getSuccsOf(N node);

@@ -25,7 +25,6 @@ package pascal.taie.analysis.dataflow.analysis;
 import pascal.taie.analysis.dataflow.fact.SetFact;
 import pascal.taie.analysis.graph.cfg.CFG;
 import pascal.taie.config.AnalysisConfig;
-import pascal.taie.ir.exp.Exp;
 import pascal.taie.ir.exp.LValue;
 import pascal.taie.ir.exp.RValue;
 import pascal.taie.ir.exp.Var;
@@ -53,7 +52,8 @@ public class LiveVariableAnalysis extends
 
     @Override
     public SetFact<Var> newBoundaryFact(CFG<Stmt> cfg) {
-        // TODO - finish me
+        // DONE - finish me
+        // 返回个空的就行 不用那么花里胡哨的
         return new SetFact<>();
 //        Stmt entry = cfg.getEntry();
 //        SetFact<Var> boundary = new SetFact<>();
@@ -69,28 +69,30 @@ public class LiveVariableAnalysis extends
 
     @Override
     public SetFact<Var> newInitialFact() {
-        // TODO - finish me
+        // DONE - finish me
         return new SetFact<>();
     }
 
     @Override
     public void meetInto(SetFact<Var> fact, SetFact<Var> target) {
-        // TODO - finish me
+        // DONE - finish me
         target.union(fact);
     }
 
     @Override
     public boolean transferNode(Stmt stmt, SetFact<Var> in, SetFact<Var> out) {
-        // TODO - finish me
-        in = out.copy();
+        // 这里是引用传递，不能乱改
+        SetFact<Var> oldOut = out.copy();
+        // Get the left values of the statement
         Optional<LValue> def = stmt.getDef();
         if(def.isPresent()){
             LValue lv = def.get();
             if(lv instanceof Var){
-                in.remove((Var) lv);
+                oldOut.remove((Var) lv);
             }
         }
 
+        // Get the right values of the statement
         List<RValue> listR =  stmt.getUses();
         SetFact<Var> use = new SetFact<>();
         for(RValue r : listR){
@@ -98,8 +100,16 @@ public class LiveVariableAnalysis extends
                 use.add((Var) r);
             }
         }
+        // union use_B
+        oldOut.union(use);
 
-        in.union(use);
-        return !out.equals(in);
+        // if change
+        if(oldOut.equals(in)){
+            in.set(oldOut);
+            return false;
+        }else{
+            in.set(oldOut);
+            return true;
+        }
     }
 }
