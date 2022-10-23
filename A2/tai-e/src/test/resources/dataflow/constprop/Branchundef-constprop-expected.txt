@@ -1,0 +1,8 @@
+------ Failure on <BranchUndef: void undefined1(boolean)> ------
+Expected: [4@L6] x = undef; {%intconst0=0, b=NAC}
+Expected: [5@L5] goto 8; {%intconst0=0, b=NAC}
+Expected: [8@L8] nop; {%intconst0=0, b=NAC, x=10}
+Expected: [9@L10] y = x; {%intconst0=0, b=NAC, x=10, y=10}
+Expected: [10@L10] return; {%intconst0=0, b=NAC, x=10, y=10}
+------ Failure on <BranchUndef: void undefined2(boolean)> ------
+Expected: [0@L15] x = undef; {b=NAC}
