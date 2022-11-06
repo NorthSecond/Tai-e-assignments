@@ -77,11 +77,49 @@ public abstract class Solver<Node, Fact> {
     }
 
     protected void initializeForward(CFG<Node> cfg, DataflowResult<Node, Fact> result) {
-        // TODO - finish me
+        // 算法前三行
+        // OUT[entry] = ∅;
+        result.setOutFact(cfg.getEntry(), analysis.newBoundaryFact(cfg));
+        //for (each basic block B\entry)
+        //  OUT[B] = ∅
+        cfg.forEach((Node node) -> {
+            if (node != cfg.getEntry()) {
+                result.setOutFact(node, analysis.newInitialFact());
+            }
+        });
+//        for(Node node : cfg){
+//            if(node != cfg.getEntry()){
+//                result.setOutFact(node, analysis.newInitialFact());
+//            }
+//        }
     }
 
-    protected void initializeBackward(CFG<Node> cfg, DataflowResult<Node, Fact> result) {
-        // TODO - finish me
+    protected void initializeBackward(CFG<Node> cfg, DataflowResult<Node, Fact> result){
+        // 算法前三行
+        // IN[exit] = ∅;
+        Node exit_node = cfg.getExit();
+        result.setInFact(exit_node, analysis.newBoundaryFact(cfg));
+        result.setOutFact(exit_node, analysis.newBoundaryFact(cfg));
+        for (Node node : cfg) {
+            if (!cfg.isExit(node)) {
+                result.setOutFact(node, analysis.newInitialFact());
+                result.setInFact(node, analysis.newInitialFact());
+            }
+        }
+//        result.setInFact(cfg.getExit(), analysis.newBoundaryFact(cfg));
+//        result.setOutFact(cfg.getExit(), analysis.newBoundaryFact(cfg));
+//        //for (each basic block B\exit)
+//        //  IN[B] = ∅
+//        cfg.forEach((Node node) -> {
+//            if (!cfg.isExit(node)) {
+//                result.setInFact(node, analysis.newInitialFact());
+//            }
+//        });
+//        for(Node node : cfg){
+//            if(node != cfg.getExit()){
+//                result.setInFact(node, analysis.newInitialFact());
+//            }
+//        }
     }
 
     /**

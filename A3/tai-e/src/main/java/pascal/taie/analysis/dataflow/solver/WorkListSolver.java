@@ -23,8 +23,13 @@
 package pascal.taie.analysis.dataflow.solver;
 
 import pascal.taie.analysis.dataflow.analysis.DataflowAnalysis;
+import pascal.taie.analysis.dataflow.analysis.constprop.CPFact;
 import pascal.taie.analysis.dataflow.fact.DataflowResult;
 import pascal.taie.analysis.graph.cfg.CFG;
+
+import java.util.ArrayDeque;
+import java.util.LinkedList;
+import java.util.Queue;
 
 class WorkListSolver<Node, Fact> extends Solver<Node, Fact> {
 
@@ -35,10 +40,58 @@ class WorkListSolver<Node, Fact> extends Solver<Node, Fact> {
     @Override
     protected void doSolveForward(CFG<Node> cfg, DataflowResult<Node, Fact> result) {
         // TODO - finish me
+        // 除了前三行的后面的部分
+        // Worklist ← all basic blocks
+        LinkedList<Node> worklist = new LinkedList<>(cfg.getNodes());
+        // while Worklist is not empty
+        while (!worklist.isEmpty()) {
+            // Pick a basic block B from Worklist
+            Node b = worklist.poll();
+            // Old_OUT = OUT[B]
+            CPFact out = null;
+            if(result.getOutFact(b) instanceof CPFact fact){
+//                System.out.println("Old_OUT = OUT[B] = " + fact);
+                out = fact;
+            }
+//            CPFact out = (CPFact) result.getOutFact(b);
+            // IN[B] = ⊔P a predecessor of B OUT[P];
+            CPFact in = new CPFact();
+            for (Node pred : cfg.getPredsOf(b)) {
+                analysis.meetInto(result.getOutFact(pred), (Fact)in);
+            }
+            // OUT[B] = gen B U (IN[B] - kill B);
+            if(analysis.transferNode(b, (Fact) in, (Fact)out)){
+                // if (old_OUT ≠ OUT[B]):Add all successors of B to Worklist
+                worklist.addAll(cfg.getSuccsOf(b));
+            }
+            result.setInFact(b, (Fact) in);
+            result.setOutFact(b, (Fact) out);
+        }
     }
 
     @Override
     protected void doSolveBackward(CFG<Node> cfg, DataflowResult<Node, Fact> result) {
         // TODO - finish me
+        // 先随便抄一个罢
+        // Worklist ← all basic blocks
+        Queue<Node> work_list = new ArrayDeque<>();
+        for (Node node : cfg) {
+            work_list.add(node);
+        }
+        while (!work_list.isEmpty()) {
+            Node node = work_list.poll();
+            Fact in = result.getInFact(node);
+            Fact out = result.getOutFact(node);
+            for (Node succ_node : cfg.getSuccsOf(node)) {
+                analysis.meetInto(result.getInFact(succ_node), out);
+            }
+            if (analysis.transferNode(node, in, out)) {
+                for (Node pred : cfg.getPredsOf(node)) {
+                    if (!work_list.contains(pred)) {
+                        work_list.add(pred);
+                    }
+                }
+            }
+        }
     }
 }
