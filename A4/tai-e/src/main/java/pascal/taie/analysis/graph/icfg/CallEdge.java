@@ -33,6 +33,9 @@ public class CallEdge<Node> extends ICFGEdge<Node> {
 
     /**
      * Callee of the call edge.
+     * 这是个啥玩意
+     * arguments.callee 属性包含当前正在执行的函数。
+     * （从ECMAScript文档里找到的 应该一样的意思吧）
      */
     private final JMethod callee;
 

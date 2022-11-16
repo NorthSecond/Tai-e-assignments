@@ -38,6 +38,8 @@ import pascal.taie.ir.stmt.Invoke;
 import pascal.taie.ir.stmt.Stmt;
 import pascal.taie.language.classes.JMethod;
 
+import java.util.List;
+
 /**
  * Implementation of interprocedural constant propagation for int values.
  */
@@ -46,7 +48,7 @@ public class InterConstantPropagation extends
 
     public static final String ID = "inter-constprop";
 
-    private final ConstantPropagation cp;
+    private final ConstantPropagation cp; // 常量传播的结果
 
     public InterConstantPropagation(AnalysisConfig config) {
         super(config);
@@ -71,42 +73,93 @@ public class InterConstantPropagation extends
 
     @Override
     public void meetInto(CPFact fact, CPFact target) {
+        // 实质上还是一个常量传播
+        // 只不过说分析的对象变成了 ICFG
         cp.meetInto(fact, target);
     }
 
     @Override
     protected boolean transferCallNode(Stmt stmt, CPFact in, CPFact out) {
-        // TODO - finish me
-        return false;
+        // Call Node
+        boolean[] changed = new boolean[1];
+        in.forEach(((var, value) -> {
+            if(out.update(var, value)) {
+                changed[0] = true;
+            }
+        }));
+        return changed[0];
     }
 
     @Override
     protected boolean transferNonCallNode(Stmt stmt, CPFact in, CPFact out) {
-        // TODO - finish me
-        return false;
+        // Non-Call Node 即为没有进行函数调用的节点
+        // 直接使用常量传播的结果
+        return cp.transferNode(stmt, in, out);
     }
 
     @Override
     protected CPFact transferNormalEdge(NormalEdge<Stmt> edge, CPFact out) {
-        // TODO - finish me
-        return null;
+        // Normal Edge
+        // 不涉及过程间的常量传播
+        // transferEdge(edge, fact) = fact
+        return out;
     }
 
     @Override
     protected CPFact transferCallToReturnEdge(CallToReturnEdge<Stmt> edge, CPFact out) {
-        // TODO - finish me
-        return null;
+        // Call To Return
+        Invoke invoke = (Invoke) edge.getSource();
+        Var lv = invoke.getLValue();
+        // 把等号左侧的变量和它的值从 fact 中kill 掉
+        if(lv != null) {
+            CPFact fact = out.copy();
+            fact.remove(lv);
+            return fact;
+        }else{
+            // 而对于等号左侧没有变量的调用，比如 m(…)，
+            // edge transfer 函数的处理方式与对待 normal edge 的一致
+            // 即不涉及过程间的常量传播
+            return out;
+        }
     }
 
     @Override
     protected CPFact transferCallEdge(CallEdge<Stmt> edge, CPFact callSiteOut) {
-        // TODO - finish me
-        return null;
+        // Call Edge
+        // 首先从调用点的 OUT fact 中获取实参的值
+        // 实参的值
+        List<Var> args = edge.getCallee().getIR().getParams();
+
+        // 调用信息
+        Invoke invoke = (Invoke) edge.getSource();
+        // 调用的方法
+        InvokeExp invokeExp = invoke.getInvokeExp();
+        List<Var> invokeExpArgs = invokeExp.getArgs();
+
+
+        // 然后返回一个新的 fact，这个 fact 把形参映射到它对应的实参的值
+        CPFact fact = new CPFact();
+        for(int i = 0; i < args.size(); i++) {
+            Var arg = args.get(i);
+            Var invokeExpArg = invokeExpArgs.get(i);
+            fact.update(arg, callSiteOut.get(invokeExpArg));
+        }
+        return fact;
     }
 
     @Override
     protected CPFact transferReturnEdge(ReturnEdge<Stmt> edge, CPFact returnOut) {
-        // TODO - finish me
-        return null;
+        // Return Edge
+        // 它从被调用方法的 exit 节点的 OUT fact 中获取返回值(可能有多个)
+        CPFact fact = new CPFact();
+        Invoke invoke = (Invoke) edge.getCallSite();
+        Var lv = invoke.getLValue();
+        // 然后返回一个将调用点等号左侧的变量映射到返回值的 fact
+        if(lv != null) {
+            // 多个变量那我就ForEach之
+            // 差点忘了这是个常量传播了……
+            edge.getReturnVars().forEach(retValue -> fact.update(lv, cp.meetValue(fact.get(lv), returnOut.get(retValue))));
+        }
+        return fact;
     }
 }
